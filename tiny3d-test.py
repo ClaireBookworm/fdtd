@@ -10,7 +10,7 @@ import tidy3d.web as web
 
 # make the geometry object representing the STL solid from the STL file stored on disk
 box = td.TriangleMesh.from_stl(
-    filename="./cable.stl",
+    filename="./box.stl",
     scale=1,  # the units are already microns as desired, but this parameter can be used to change units [default: 1]
     origin=(
         0,
