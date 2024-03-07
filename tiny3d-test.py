@@ -8,29 +8,30 @@ import tidy3d as td
 import tidy3d.web as web
 # %% 
 
-# make the geometry object representing the STL solid from the STL file stored on disk
-box = td.TriangleMesh.from_stl(
-    filename="./box.stl",
-    scale=1,  # the units are already microns as desired, but this parameter can be used to change units [default: 1]
-    origin=(
-        0,
-        0,
-        0,
-    ),  # this can be used to set a custom origin for the stl solid [default: (0, 0, 0)]
-    solid_index=None,  # sometimes, there may be more than one solid in the file; use this to select a specific one by index
+# make the geometry object representing the circular solid
+cylinder = td.Cylinder(
+	center=(0, 0, 0),  # center of the cylinder
+	radius=0.5,  # radius of the cylinder
+	length=1.0,  # length of the cylinder
+	axis=2,  # axis along which the cylinder is aligned
 )
 
-# define material properties of the box
+# define material properties of the cylinder
 medium = td.Medium(permittivity=2)
 
 # create a structure composed of the geometry and the medium
-structure = td.Structure(geometry=box, medium=medium)
+structure = td.Structure(geometry=cylinder, medium=medium)
 
-# to make sure the simulation runs correctly, let's also make a reference box the usual way
-box_ref = td.Box(center=(0, 0, 0), size=(0.8, 1.3, 0.3))
+# to make sure the simulation runs correctly, let's also make a reference cylinder the usual way
+cylinder_ref = td.Cylinder(
+	center=(0, 0, 0),  # center of the cylinder
+	radius=0.5,  # radius of the cylinder
+	height=1.0,  # height of the cylinder
+	axis="z",  # axis along which the cylinder is aligned
+)
 
 # make the reference structure
-structure_ref = td.Structure(geometry=box_ref, medium=medium)
+structure_ref = td.Structure(geometry=cylinder_ref, medium=medium)
 
 wavelength = 0.3
 f0 = td.C_0 / wavelength / np.sqrt(medium.permittivity)
@@ -55,43 +56,40 @@ run_time = 40 / fwidth
 # %%
 # create a plane wave source
 source = td.PlaneWave(
-    center=(0, 0, -1),
-    source_time=source_time,
-    size=(td.inf, td.inf, 0),
-    direction="+",
+	center=(0, 0, -1),
+	source_time=source_time,
+	size=(td.inf, td.inf, 0),
+	direction="+",
+	medium=medium,  # specify the medium for the source
 )
 
 # these monitors will be used to plot fields on planes through the middle of the domain in the frequency domain
-monitor_xz = td.FieldMonitor(
-    center=(0, 0, 0), size=(domain_size, 0, domain_size), freqs=[f0], name="xz"
-)
-monitor_yz = td.FieldMonitor(
-    center=(0, 0, 0), size=(0, domain_size, domain_size), freqs=[f0], name="yz"
-)
-monitor_xy = td.FieldMonitor(
-    center=(0, 0, 0), size=(domain_size, domain_size, 0), freqs=[f0], name="xy"
-)
-# %%
 # STL simulation
 sim = td.Simulation(
-    size=sim_size,
-    grid_spec=td.GridSpec.auto(min_steps_per_wvl=20),
-    sources=[source],
-    structures=[structure],
-    monitors=[monitor_xz, monitor_yz, monitor_xy],
-    run_time=run_time,
-    boundary_spec=td.BoundarySpec.all_sides(td.PML()),
+	size=sim_size,
+	grid_spec=td.GridSpec.auto(min_steps_per_wvl=20),
+	sources=[source],
+	structures=[structure],
+	monitors=[monitor_xz, monitor_yz, monitor_xy],
+	run_time=run_time,
+	boundary_spec=td.BoundarySpec.all_sides(td.PML()),
 )
 
 # reference simulation
 sim_ref = td.Simulation(
-    size=sim_size,
-    grid_spec=td.GridSpec.auto(min_steps_per_wvl=20),
-    sources=[source],
-    structures=[structure_ref],
-    monitors=[monitor_xz, monitor_yz, monitor_xy],
-    run_time=run_time,
-    boundary_spec=td.BoundarySpec.all_sides(td.PML()),
+	size=sim_size,
+	grid_spec=td.GridSpec.auto(min_steps_per_wvl=20),
+	sources=[td.PlaneWave(
+		center=(0, 0, -1),
+		source_time=source_time,
+		size=(td.inf, td.inf, 0),
+		direction="+",
+		medium=medium,  # specify the medium for the source
+	)],
+	structures=[structure_ref],
+	monitors=[monitor_xz, monitor_yz, monitor_xy],
+	run_time=run_time,
+	boundary_spec=td.BoundarySpec.all_sides(td.PML()),
 )
 
 # plot both simulations to make sure everything is set up correctly
