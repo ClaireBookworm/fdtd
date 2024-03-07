@@ -1,3 +1,4 @@
+# %%
 # standard python imports
 import numpy as np
 import matplotlib.pyplot as plt
@@ -9,7 +10,7 @@ import tidy3d.web as web
 
 # make the geometry object representing the STL solid from the STL file stored on disk
 box = td.TriangleMesh.from_stl(
-    filename="./misc/box.stl",
+    filename="./cable.stl",
     scale=1,  # the units are already microns as desired, but this parameter can be used to change units [default: 1]
     origin=(
         0,
@@ -51,3 +52,51 @@ source_time = td.GaussianPulse(freq0=f0, fwidth=fwidth, offset=offset)
 
 # Simulation run time past the source decay (around t=2*offset/fwidth)
 run_time = 40 / fwidth
+# %%
+# create a plane wave source
+source = td.PlaneWave(
+    center=(0, 0, -1),
+    source_time=source_time,
+    size=(td.inf, td.inf, 0),
+    direction="+",
+)
+
+# these monitors will be used to plot fields on planes through the middle of the domain in the frequency domain
+monitor_xz = td.FieldMonitor(
+    center=(0, 0, 0), size=(domain_size, 0, domain_size), freqs=[f0], name="xz"
+)
+monitor_yz = td.FieldMonitor(
+    center=(0, 0, 0), size=(0, domain_size, domain_size), freqs=[f0], name="yz"
+)
+monitor_xy = td.FieldMonitor(
+    center=(0, 0, 0), size=(domain_size, domain_size, 0), freqs=[f0], name="xy"
+)
+# %%
+# STL simulation
+sim = td.Simulation(
+    size=sim_size,
+    grid_spec=td.GridSpec.auto(min_steps_per_wvl=20),
+    sources=[source],
+    structures=[structure],
+    monitors=[monitor_xz, monitor_yz, monitor_xy],
+    run_time=run_time,
+    boundary_spec=td.BoundarySpec.all_sides(td.PML()),
+)
+
+# reference simulation
+sim_ref = td.Simulation(
+    size=sim_size,
+    grid_spec=td.GridSpec.auto(min_steps_per_wvl=20),
+    sources=[source],
+    structures=[structure_ref],
+    monitors=[monitor_xz, monitor_yz, monitor_xy],
+    run_time=run_time,
+    boundary_spec=td.BoundarySpec.all_sides(td.PML()),
+)
+
+# plot both simulations to make sure everything is set up correctly
+_, (ax1, ax2) = plt.subplots(1, 2, figsize=(9, 4))
+sim.plot(y=0, ax=ax1)
+sim_ref.plot(y=0, ax=ax2)
+plt.show()
+# %%
